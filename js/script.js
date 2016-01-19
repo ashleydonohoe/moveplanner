@@ -1,9 +1,6 @@
 
 function loadData() {
 
-    /*
-    The $ that shows up in variable names, like $body for example, is just a character like any other. In this case, it refers to the fact that the variable referenced by $body is a jQuery collection, not a DOM node.
-    */
     var $body = $('body');
     var $wikiElem = $('#wikipedia-links');
     var $nytHeaderElem = $('#nytimes-header');
@@ -14,42 +11,54 @@ function loadData() {
     $wikiElem.text("");
     $nytElem.text("");
 
-    var streetStr = $('#street').val();
-    var cityStr = $('#city').val();
-    var address = streetStr + ', ' + cityStr;
-
-    $greeting.text('So, you want to live at ' + address + '?');
-
-
     // load streetview
-    var streetviewUrl = 'http://maps.googleapis.com/maps/api/streetview?size=600x400&location=' + address + '';
-    $body.append('<img class="bgimg" src="' + streetviewUrl + '">');
+    var street = $('#street').val();
+    var city = $('#city').val();
+    $greeting.text('So, you want to live at ' + street + ' in ' + city + '?');
+    $body.append('<img class="bgimg" src="https://maps.googleapis.com/maps/api/streetview?size=600x300&location=' + street + ',' + city + '">');
 
-
-    // load nytimes
-    // obviously, replace all the "X"s with your own API key
-    var nytimesUrl = 'http://api.nytimes.com/svc/search/v2/articlesearch.json?q=' + cityStr + '&sort=newest&api-key=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
-    $.getJSON(nytimesUrl, function(data){
-
-        $nytHeaderElem.text('New York Times Articles About ' + cityStr);
-
-        articles = data.response.docs;
-        for (var i = 0; i < articles.length; i++) {
-            var article = articles[i];
-            $nytElem.append('<li class="article">'+
-                '<a href="'+article.web_url+'">'+article.headline.main+'</a>'+
-                '<p>' + article.snippet + '</p>'+
-            '</li>');
+    // NYTimes -> API KEY is a70870151d8f4c6cd36a888674d06f9f:18:63302611
+    var nytURL = "http://api.nytimes.com/svc/search/v2/articlesearch.json?" +city+ "&api-key=a70870151d8f4c6cd36a888674d06f9f:18:63302611";
+    $.getJSON(nytURL, function (data) {
+        var articles = data.response.docs;
+        for(var i = 0; i < articles.length; i++) {
+            var articleURL = articles[i].web_url;
+            var headline = '<a href="' +articleURL+'">' + articles[i].headline.main + '</a>';
+            var snippet = '<p>' + articles[i].snippet + '</p>';
+            var newItem = '<li class="article">' + headline + snippet + '</li>';
+            $('#nytimes-articles').append(newItem);
         };
-
-    }).error(function(e){
+    }).error(function(e) {
         $nytHeaderElem.text('New York Times Articles Could Not Be Loaded');
     });
 
+    // Loads Wikipedia article links
+    var wikiUrl = "http://en.wikipedia.org/w/api.php?action=opensearch&search="+city+"&format=json&callback=wikiCallback";
+    var wikiRequestTimeout = setTimeout(function() {
+        $wikiElem.text("Failed to Get Wikipedia Resources");
+    }, 8000);
 
-    // load wikipedia data
+    $.ajax({
+        url: wikiUrl,
+        dataType: "jsonp",
+        //jsonp: "callback",
+        success: function( response ) {
+            var articleList = response[1];
+            console.log(articleList.length);
+            if(articleList.length === 0) {
+                $wikiElem.text("Sorry, no Wikipedia articles were found for your query.");
+            } else {
+                for(var i = 0; i < articleList.length; i++) {
+                    var articleStr = articleList[i];
+                    var url = 'http://en.wikipedia.org/wiki/' + articleStr;
+                    $wikiElem.append('<li><a href="' + url + '">' + articleStr + '</a></li>');
+                 };
+            }
 
-    // YOUR CODE GOES HERE!
+            clearTimeout(wikiRequestTimeout);
+        }
+
+    });
 
     return false;
 };
